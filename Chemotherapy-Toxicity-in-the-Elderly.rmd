@@ -1,0 +1,619 @@
+---
+title: 'Chemotherapy Toxicity in the Elderly: Statistical Report'
+author: "Dr. Benjamin Moran MBBS, BMedSci (Hons), MMedStats, FANZCA, FCICM"
+output:
+  html_document: 
+    toc: true
+    toc_float: true
+  pdf_document: default
+  word_document: default
+bibliography: references.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE)
+```
+
+## Part 1: Methods and Analysis
+
+[**Aims/Objectives**]{.ul}
+
+*Primary Objectives*
+
+1.  Describe patterns of chemotherapy/immunotherapy use.
+2.  Describe associated toxicity of chemotherapy/immunotherapy agents
+
+*Secondary Objectives*
+
+1.  Evaluate the cancer outcomes for the elderly cohort including Disease-Free Survival (DFS), Progression-Free Survival (PFS) and Overall Survival (OS).
+
+[**Methods**]{.ul}
+
+[**Statistical Analysis**]{.ul}
+
+Baseline patient characteristics were summarised using standard descriptive statistics. Continuous variables were reported as means with standard deviation and categorical variables reported as number and percentages. All values excluded missing values.
+
+Overall survival (OS), disease-free survival (DFS) and progression-free survival (PFS) were evaluated using the Kaplan-Meier method. Kaplan-Meier survival curves were constructed to estimate the median OS, DFS and PFS. Stratified survival curves were constructed using prespecified subgroups: age, sex, smoking status, Eastern Cooperative Oncology Group (ECOG) performance status and number of comorbidities. Comparison between the subgroups were performed using the log-rank test. Two-sided *p* values \<0.05 were considered significant.
+
+Statistical analyses were performed using R Version 4.0.3 (R Core Team, R Foundation for Statistical Computing, Vienna, Austria) and RStudio Version 1.4.1103 (RStudio, PBC, Boston, MA). Packages used for analysis included tidyverse, survival, survminer and gtsummary. \
+\
+
+## Part 2: Patient Demographics
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center'}
+
+library(readr) 
+setwd("~/Research/Current Projects/Chemotherapy Toxicity in the Elderly") 
+Toxicity <- read_csv("Data.csv") 
+View(Toxicity)
+
+
+library(tidyverse)
+library(flextable)
+library(gtsummary)
+
+# Change time unit to months.
+Toxicity <- Toxicity %>% mutate(
+  OS = OS*(12/356.25),
+  PFS = PFS*(12/356.25),
+  DFS = DFS*(12/356.25)
+)
+
+# Generate Age Bands
+Toxicity <- Toxicity  %>% mutate(Age_Cat = case_when(
+  (Age >=75) & (Age <=80)  ~ "75-80",
+  (Age >=81) & (Age <=85)  ~ "81-85",
+  (Age >=76) & (Age <=90)  ~ "86-90"))
+
+t1 <- Toxicity %>% 
+  select(Age, Age_Cat, Sex, Smoker, ECOG, Comorbidities, Cancer_Stream) %>% 
+    tbl_summary(missing = "no",
+            label = list(
+              Age_Cat = "Age",
+              Age = "Age (Years)",
+              ECOG = "ECOG Scale",
+              Smoker = "Smoking Status",
+              Comorbidities = "Number of Comorbidities",
+              Cancer_Stream = "Tumour Stream")) %>% 
+  bold_labels() %>% 
+  italicize_levels() %>% 
+  gtsummary::as_flextable()
+    
+
+t1
+
+```
+
+## Part 3: Survival Curves
+
+### Overall Survival
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', dpi=600}
+
+library(survival)
+library(survminer)
+
+OS_KM <- survfit(Surv(OS, Status) ~1, data = Toxicity)
+tbl_survival(
+  OS_KM,
+  times = NULL,
+  probs = 0.5,
+  header_estimate = "**Months**")%>% 
+  gtsummary::as_flextable()
+   
+
+ggsurvplot(
+    fit = survfit(Surv(OS, Status) ~1, data = Toxicity), 
+    title = "Overall Survival",
+    xlab = "Months", 
+    ylab = "Overall Survival (%)",
+    risk.table = TRUE,
+    legend = "none",
+    surv.scale = "percent")
+```
+
+### Disease-Free Survival
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', dpi=600}
+
+library(survival)
+library(survminer)
+
+DFS_KM <- survfit(Surv(DFS, Status) ~1, data = Toxicity)
+tbl_survival(
+  DFS_KM,
+  times = NULL,
+  probs = 0.5,
+  header_estimate = "**Months**")%>% 
+  gtsummary::as_flextable()
+
+ggsurvplot(
+    fit = survfit(Surv(DFS, Status) ~1, data = Toxicity), 
+    title = "Disease-Free Survival",
+    xlab = "Months", 
+    ylab = "Disease-Free Survival (%)", 
+    risk.table = TRUE,
+    legend = "none",
+    surv.scale = "percent")
+```
+
+### Progression-Free Survival
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', dpi=600}
+
+library(survival)
+library(survminer)
+
+PFS_KM <- survfit(Surv(PFS, Status) ~1, data = Toxicity)
+tbl_survival(
+  PFS_KM,
+  times = NULL,
+  probs = 0.5,
+  header_estimate = "**Months**")%>% 
+  gtsummary::as_flextable()
+
+ggsurvplot(
+    fit = survfit(Surv(PFS, Status) ~1, data = Toxicity),
+    title = "Progression-Free Survival",
+    xlab = "Months", 
+    ylab = "Progression-Free Survival (%)",
+    risk.table = TRUE,
+    legend = "none",
+    surv.scale = "percent")
+
+```
+
+## Part 4: Survival Curves- Stratified Subgroups
+
+### Overall Survival
+
+#### Age
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', dpi=600}
+
+library(survival)
+library(survminer)
+
+OS_Age <- survfit(Surv(OS, Status) ~ Age_Cat, data = Toxicity)
+tbl_survival(
+  OS_Age,
+  times = NULL,
+  probs = 0.5,
+  header_estimate = "**Months**")%>% 
+  gtsummary::as_flextable()
+
+ggsurvplot(
+    fit = survfit(Surv(OS, Status) ~ Age_Cat, data = Toxicity),
+    title = "Overall Survival: Age",
+    xlab = "Months", 
+    ylab = "Overall Survival (%)",
+    risk.table = TRUE,
+    risk.table.height = 0.3,
+    pval = TRUE,
+    legend.labs = c("75-80", "81-85", "86-90"),
+    legend.title = "Age",
+    surv.scale = "percent")
+
+```
+
+#### Sex
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', dpi=600}
+
+library(survival)
+library(survminer)
+
+OS_Sex <- survfit(Surv(OS, Status) ~ Sex, data = Toxicity)
+tbl_survival(
+  OS_Sex,
+  times = NULL,
+  probs = 0.5,
+  header_estimate = "**Months**")%>% 
+  gtsummary::as_flextable()
+
+ggsurvplot(
+    fit = survfit(Surv(OS, Status) ~ Sex, data = Toxicity),
+    title = "Overall Survival: Sex",
+    xlab = "Months", 
+    ylab = "Overall Survival (%)",
+    risk.table = TRUE,
+    risk.table.height = 0.3,
+    pval = TRUE,
+    legend.labs = c("Female", "Male"),
+    legend.title = "Sex",
+    legend = c(0.8,0.8),
+    surv.scale = "percent")
+
+```
+
+#### ECOG Scale
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', dpi=600}
+
+library(survival)
+library(survminer)
+
+OS_ECOG <- survfit(Surv(OS, Status) ~ ECOG, data = Toxicity)
+tbl_survival(
+  OS_ECOG,
+  times = NULL,
+  probs = 0.5,
+  header_estimate = "**Months**")%>% 
+  gtsummary::as_flextable()
+
+ggsurvplot(
+    fit = survfit(Surv(OS, Status) ~ ECOG, data = Toxicity),
+    title = "Overall Survival: ECOG",
+    xlab = "Months", 
+    ylab = "Overall Survival (%)",
+    risk.table = TRUE,
+    risk.table.height = 0.35,
+    pval = TRUE,
+    legend.labs = c("0", "1", "2"),
+    legend.title = "ECOG",
+    legend = c(0.8,0.8),
+    surv.scale = "percent")
+
+```
+
+#### Smoking Status
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', dpi=600}
+
+library(survival)
+library(survminer)
+
+OS_Smoker <- survfit(Surv(OS, Status) ~ Smoker, data = Toxicity)
+tbl_survival(
+  OS_Smoker,
+  times = NULL,
+  probs = 0.5,
+  header_estimate = "**Months**")%>% 
+  gtsummary::as_flextable()
+
+ggsurvplot(
+    fit = survfit(Surv(OS, Status) ~ Smoker, data = Toxicity),
+    title = "Overall Survival: Smoking Status",
+    xlab = "Months", 
+    ylab = "Overall Survival (%)",
+    risk.table = TRUE,
+    risk.table.height = 0.35,
+    pval = TRUE,
+    legend.labs = c("Current", "Never", "Previous"),
+    legend.title = "Smoking Status",
+    legend = c(0.8,0.8),
+    surv.scale = "percent")
+
+```
+
+#### Comorbidities
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', dpi=600}
+
+library(survival)
+library(survminer)
+
+OS_Comorbidities <- survfit(Surv(OS, Status) ~ Comorbidities, data = Toxicity)
+tbl_survival(
+  OS_Comorbidities,
+  times = NULL,
+  probs = 0.5,
+  header_estimate = "**Months**")%>% 
+  gtsummary::as_flextable()
+
+ggsurvplot(
+    fit = survfit(Surv(OS, Status) ~ Comorbidities, data = Toxicity),
+    title = "Overall Survival: Number of Comorbidities",
+    xlab = "Months", 
+    ylab = "Overall Survival (%)",
+    risk.table = TRUE,
+    risk.table.height = 0.4,
+    pval = TRUE,
+    legend.labs = c("0", "1", "2", "3", "4"),
+    legend.title = "Number of Comorbidities",
+    legend = "top",
+    surv.scale = "percent")
+
+```
+
+### Disease-Free Survival
+
+#### Age
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', dpi=600}
+
+library(survival)
+library(survminer)
+
+DFS_Age <- survfit(Surv(DFS, Status) ~ Age_Cat, data = Toxicity)
+tbl_survival(
+  DFS_Age,
+  times = NULL,
+  probs = 0.5,
+  header_estimate = "**Months**")%>% 
+  gtsummary::as_flextable()
+
+ggsurvplot(
+    fit = survfit(Surv(DFS, Status) ~ Age_Cat, data = Toxicity),
+    title = "Disease-Free Survival: Age",
+    xlab = "Months", 
+    ylab = "Disease-Free Survival (%)",
+    risk.table = TRUE,
+    risk.table.height = 0.3,
+    pval = TRUE,
+    legend.labs = c("75-80", "81-85", "86-90"),
+    legend.title = "Age",
+    surv.scale = "percent")
+
+```
+
+#### Sex
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', dpi=600}
+
+library(survival)
+library(survminer)
+
+DFS_Sex <- survfit(Surv(DFS, Status) ~ Sex, data = Toxicity)
+tbl_survival(
+  DFS_Sex,
+  times = NULL,
+  probs = 0.5,
+  header_estimate = "**Months**")%>% 
+  gtsummary::as_flextable()
+
+ggsurvplot(
+    fit = survfit(Surv(DFS, Status) ~ Sex, data = Toxicity),
+    title = "Disease-Free Survival: Sex",
+    xlab = "Months", 
+    ylab = "Disease-Free Survival (%)",
+    risk.table = TRUE,
+    risk.table.height = 0.3,
+    pval = TRUE,
+    legend.labs = c("Female", "Male"),
+    legend.title = "Sex",
+    legend = c(0.8,0.8),
+    surv.scale = "percent")
+
+```
+
+#### ECOG Scale
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', dpi=600}
+
+library(survival)
+library(survminer)
+
+DFS_ECOG <- survfit(Surv(DFS, Status) ~ ECOG, data = Toxicity)
+tbl_survival(
+  DFS_ECOG,
+  times = NULL,
+  probs = 0.5,
+  header_estimate = "**Months**")%>% 
+  gtsummary::as_flextable()
+
+ggsurvplot(
+    fit = survfit(Surv(DFS, Status) ~ ECOG, data = Toxicity),
+    title = "Disease-Free Survival: ECOG",
+    xlab = "Months", 
+    ylab = "Disease-Free Survival (%)",
+    risk.table = TRUE,
+    risk.table.height = 0.35,
+    pval = TRUE,
+    legend.labs = c("0", "1", "2"),
+    legend.title = "ECOG",
+    legend = "top",
+    surv.scale = "percent")
+
+```
+
+#### Smoking Status
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', dpi=600}
+
+library(survival)
+library(survminer)
+
+DFS_Smoker <- survfit(Surv(DFS, Status) ~ Smoker, data = Toxicity)
+tbl_survival(
+  DFS_Smoker,
+  times = NULL,
+  probs = 0.5,
+  header_estimate = "**Months**")%>% 
+  gtsummary::as_flextable()
+
+ggsurvplot(
+    fit = survfit(Surv(DFS, Status) ~ Smoker, data = Toxicity),
+    title = "Disease-Free Survival: Smoking Status",
+    xlab = "Months", 
+    ylab = "Disease-Free Survival (%)",
+    risk.table = TRUE,
+    risk.table.height = 0.35,
+    pval = TRUE,
+    legend.labs = c("Current", "Never", "Previous"),
+    legend.title = "Smoking Status",
+    legend = c(0.8,0.8),
+    surv.scale = "percent")
+
+```
+
+#### Comorbidities
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', dpi=600}
+
+library(survival)
+library(survminer)
+
+DFS_Comorbidities <- survfit(Surv(DFS, Status) ~ Comorbidities, data = Toxicity)
+tbl_survival(
+  DFS_Comorbidities,
+  times = NULL,
+  probs = 0.5,
+  header_estimate = "**Months**")%>% 
+  gtsummary::as_flextable()
+
+ggsurvplot(
+    fit = survfit(Surv(DFS, Status) ~ Comorbidities, data = Toxicity),
+    title = "Disease-Free Survival: Number of Comorbidities",
+    xlab = "Months", 
+    ylab = "Disease-Free Survival (%)",
+    risk.table = TRUE,
+    risk.table.height = 0.4,
+    pval = TRUE,
+    legend.labs = c("1", "2", "3", "4"),
+    legend.title = "Number of Comorbidities",
+    legend = "top",
+    surv.scale = "percent")
+
+```
+
+### Progression-Free Survival
+
+#### Age
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', dpi=600}
+
+library(survival)
+library(survminer)
+
+PFS_Age <- survfit(Surv(PFS, Status) ~ Age_Cat, data = Toxicity)
+tbl_survival(
+  PFS_Age,
+  times = NULL,
+  probs = 0.5,
+  header_estimate = "**Months**")%>% 
+  gtsummary::as_flextable()
+
+ggsurvplot(
+    fit = survfit(Surv(PFS, Status) ~ Age_Cat, data = Toxicity),
+    title = "Progression-Free Survival: Age",
+    xlab = "Months", 
+    ylab = "Progression-Free Survival (%)",
+    risk.table = TRUE,
+    risk.table.height = 0.3,
+    pval = TRUE,
+    legend.labs = c("75-80", "81-85", "86-90"),
+    legend.title = "Age",
+    surv.scale = "percent")
+
+```
+
+#### Sex
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', dpi=600}
+
+library(survival)
+library(survminer)
+
+PFS_Sex <- survfit(Surv(PFS, Status) ~ Sex, data = Toxicity)
+tbl_survival(
+  PFS_Sex,
+  times = NULL,
+  probs = 0.5,
+  header_estimate = "**Months**")%>% 
+  gtsummary::as_flextable()
+
+ggsurvplot(
+    fit = survfit(Surv(PFS, Status) ~ Sex, data = Toxicity),
+    title = "Progression-Free Survival: Sex",
+    xlab = "Months", 
+    ylab = "Progression-Free Survival (%)",
+    risk.table = TRUE,
+    risk.table.height = 0.3,
+    pval = TRUE,
+    legend.labs = c("Female", "Male"),
+    legend.title = "Sex",
+    legend = c(0.8,0.8),
+    surv.scale = "percent")
+
+```
+
+#### ECOG Scale
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', dpi=600}
+
+library(survival)
+library(survminer)
+
+PFS_ECOG <- survfit(Surv(PFS, Status) ~ ECOG, data = Toxicity)
+tbl_survival(
+  PFS_ECOG,
+  times = NULL,
+  probs = 0.5,
+  header_estimate = "**Months**")%>% 
+  gtsummary::as_flextable()
+
+ggsurvplot(
+    fit = survfit(Surv(PFS, Status) ~ ECOG, data = Toxicity),
+    title = "Progression-Free Survival: ECOG",
+    xlab = "Months", 
+    ylab = "Progression-Free Survival (%)",
+    risk.table = TRUE,
+    risk.table.height = 0.35,
+    pval = TRUE,
+    legend.labs = c("0", "1", "2"),
+    legend.title = "ECOG",
+    legend = c(0.8,0.8),
+    surv.scale = "percent")
+
+```
+
+#### Smoking Status
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', dpi=600}
+
+library(survival)
+library(survminer)
+
+PFS_Smoker <- survfit(Surv(PFS, Status) ~ Smoker, data = Toxicity)
+tbl_survival(
+  PFS_Smoker,
+  times = NULL,
+  probs = 0.5,
+  header_estimate = "**Months**")%>% 
+  gtsummary::as_flextable()
+
+ggsurvplot(
+    fit = survfit(Surv(PFS, Status) ~ Smoker, data = Toxicity),
+    title = "Progression-Free Survival: Smoking Status",
+    xlab = "Months", 
+    ylab = "Progression-Free Survival (%)",
+    risk.table = TRUE,
+    risk.table.height = 0.35,
+    pval = TRUE,
+    legend.labs = c("Current", "Never", "Previous"),
+    legend.title = "Smoking Status",
+    legend = c(0.8,0.8),
+    surv.scale = "percent")
+
+```
+
+#### Comorbidities
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', dpi=600}
+
+library(survival)
+library(survminer)
+
+PFS_Comorbidities <- survfit(Surv(PFS, Status) ~ Comorbidities, data = Toxicity)
+tbl_survival(
+  PFS_Comorbidities,
+  times = NULL,
+  probs = 0.5,
+  header_estimate = "**Months**")%>% 
+  gtsummary::as_flextable()
+
+ggsurvplot(
+    fit = survfit(Surv(PFS, Status) ~ Comorbidities, data = Toxicity),
+    title = "Progression-Free Survival: Number of Comorbidities",
+    xlab = "Months", 
+    ylab = "Progression-Free Survival (%)",
+    risk.table = TRUE,
+    risk.table.height = 0.4,
+    pval = TRUE,
+    legend.labs = c("0", "1", "2", "3", "4"),
+    legend.title = "Number of Comorbidities",
+    legend = "top",
+    surv.scale = "percent")
+
+```
